@@ -9,7 +9,7 @@ env:
   AWS_REGION: ap-south-1
   AWS_ACCOUNT_ID: "700918785571"
   ECR_REGISTRY: 700918785571.dkr.ecr.ap-south-1.amazonaws.com
-  ECR_REPO: action-21
+  ECR_REPO: cloud
 
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:

@@ -8,7 +8,7 @@
 set -e   # stop script immediately if any command fails
 
 ECR_REGISTRY="700918785571.dkr.ecr.ap-south-1.amazonaws.com"
-ECR_REPO="action-21"
+ECR_REPO="cloud"
 APP_DIR="/home/ec2-user/brightcity"
 REGION="ap-south-1"
 
@@ -122,7 +122,7 @@ services:
       retries: 5
 
   backend:
-    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-action-21}:backend-latest
+    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-cloud}:backend-latest
     restart: always
     ports:
       - "8000:8000"
@@ -136,7 +136,7 @@ services:
       - app_network
 
   frontend:
-    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-action-21}:frontend-latest
+    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-cloud}:frontend-latest
     restart: always
     ports:
       - "80:80"
@@ -219,7 +219,7 @@ EOF
 # Write .env file
 cat > $APP_DIR/.env << 'EOF'
 ECR_REGISTRY=700918785571.dkr.ecr.ap-south-1.amazonaws.com
-ECR_REPO=action-21
+ECR_REPO=cloud
 POSTGRES_USER=brightcity_user
 POSTGRES_PASSWORD=brightcity_password
 POSTGRES_DB=brightcity_db

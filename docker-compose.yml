@@ -22,7 +22,7 @@ services:
 
   # ─── FastAPI Backend ─────────────────────────────────────────────────────
   backend:
-    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-action-21}:backend-latest
+    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-cloud}:backend-latest
     restart: always
     ports:
       - "8000:8000"
@@ -42,7 +42,7 @@ services:
 
   # ─── React/Vite Frontend (Nginx) ─────────────────────────────────────────
   frontend:
-    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-action-21}:frontend-latest
+    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-cloud}:frontend-latest
     restart: always
     ports:
       - "80:80"
