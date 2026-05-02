@@ -6,9 +6,10 @@ on:
   workflow_dispatch:        # allow manual trigger from GitHub UI
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_BACKEND_REPO: brightcity-backend
-  ECR_FRONTEND_REPO: brightcity-frontend
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "700918785571"
+  ECR_REGISTRY: 700918785571.dkr.ecr.ap-south-1.amazonaws.com
+  ECR_REPO: action-21
 
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
@@ -34,66 +35,56 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-south-1
 
       - name: 🔐 Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # ── Create ECR repos if they don't exist ──────────────────────────────
-      - name: 📦 Ensure ECR repos exist
-        run: |
-          aws ecr describe-repositories --repository-names $ECR_BACKEND_REPO  --region $AWS_REGION 2>/dev/null || \
-            aws ecr create-repository --repository-name $ECR_BACKEND_REPO --region $AWS_REGION
-
-          aws ecr describe-repositories --repository-names $ECR_FRONTEND_REPO --region $AWS_REGION 2>/dev/null || \
-            aws ecr create-repository --repository-name $ECR_FRONTEND_REPO --region $AWS_REGION
-
       # ── Build & Push Backend ──────────────────────────────────────────────
       - name: 🏗️ Build Backend image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.image-tag }}
         run: |
           docker build \
-            -t $ECR_REGISTRY/$ECR_BACKEND_REPO:$IMAGE_TAG \
-            -t $ECR_REGISTRY/$ECR_BACKEND_REPO:latest \
+            -t $ECR_REGISTRY/$ECR_REPO:backend-$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPO:backend-latest \
             ./backend
 
       - name: 📤 Push Backend image to ECR
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.image-tag }}
         run: |
-          docker push $ECR_REGISTRY/$ECR_BACKEND_REPO:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_BACKEND_REPO:latest
+          docker push $ECR_REGISTRY/$ECR_REPO:backend-$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPO:backend-latest
 
       # ── Build & Push Frontend ─────────────────────────────────────────────
       - name: 🏗️ Build Frontend image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.image-tag }}
         run: |
           docker build \
-            -t $ECR_REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG \
-            -t $ECR_REGISTRY/$ECR_FRONTEND_REPO:latest \
+            -t $ECR_REGISTRY/$ECR_REPO:frontend-$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPO:frontend-latest \
             ./frontend
 
       - name: 📤 Push Frontend image to ECR
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.image-tag }}
         run: |
-          docker push $ECR_REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_FRONTEND_REPO:latest
+          docker push $ECR_REGISTRY/$ECR_REPO:frontend-$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPO:frontend-latest
 
       - name: ✅ Build Summary
+        env:
+          IMAGE_TAG: ${{ steps.vars.outputs.image-tag }}
         run: |
-          echo "### 🐳 Docker Images Pushed" >> $GITHUB_STEP_SUMMARY
+          echo "### 🐳 Docker Images Pushed to ECR" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`$ECR_REGISTRY/$ECR_REPO\`" >> $GITHUB_STEP_SUMMARY
           echo "| Service  | Tag |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend  | \`${{ steps.vars.outputs.image-tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend | \`${{ steps.vars.outputs.image-tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend  | \`backend-$IMAGE_TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | \`frontend-$IMAGE_TAG\` |" >> $GITHUB_STEP_SUMMARY
 
   # ── JOB 2: Deploy to EC2 ──────────────────────────────────────────────────
   deploy:
@@ -126,8 +117,10 @@ jobs:
 
             # Write .env for docker compose
             cat > .env <<EOF
-            AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
-            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_ACCOUNT_ID=700918785571
+            AWS_REGION=ap-south-1
+            ECR_REGISTRY=700918785571.dkr.ecr.ap-south-1.amazonaws.com
+            ECR_REPO=action-21
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
@@ -138,9 +131,9 @@ jobs:
             EOF
 
             # Login to ECR
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+            aws ecr get-login-password --region ap-south-1 | \
               docker login --username AWS --password-stdin \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              700918785571.dkr.ecr.ap-south-1.amazonaws.com
 
             # Pull latest images
             docker compose pull
@@ -194,8 +187,8 @@ jobs:
           echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Service    | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend   | http://${{ secrets.EC2_HOST }}/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend    | http://${{ secrets.EC2_HOST }}:8000/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Grafana    | http://${{ secrets.EC2_HOST }}:3000/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Prometheus | http://${{ secrets.EC2_HOST }}:9090/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Frontend   | http://${{ secrets.EC2_HOST }}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔌 Backend    | http://${{ secrets.EC2_HOST }}:8000/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Grafana    | http://${{ secrets.EC2_HOST }}:3000/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📈 Prometheus | http://${{ secrets.EC2_HOST }}:9090/ |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag  | \`${{ needs.build-and-push.outputs.image-tag }}\` |" >> $GITHUB_STEP_SUMMARY
