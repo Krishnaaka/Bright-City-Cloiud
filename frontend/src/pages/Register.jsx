@@ -15,7 +15,7 @@ const Register = () => {
         e.preventDefault();
         setIsLoading(true);
         try {
-            await axios.post('http://localhost:8000/api/register', {
+            await axios.post('/api/register', {
                 username,
                 email,
                 password
@@ -24,7 +24,7 @@ const Register = () => {
             navigate('/login');
         } catch (error) {
             if (error.code === 'ERR_NETWORK' || !error.response) {
-                alert('Cannot connect to backend. Make sure the backend server is running on http://localhost:8000');
+                alert('Cannot connect to backend. Make sure the backend server is running on ');
             } else {
                 const detail = error.response?.data?.detail || 'Registration failed. Please try again.';
                 alert(`Error: ${detail}`);

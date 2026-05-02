@@ -53,7 +53,7 @@ const CitizenDashboard = () => {
     const fetchComplaints = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:8000/api/complaints', {
+            const response = await axios.get('/api/complaints', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Filter complaints to only show the user's own if needed, 
@@ -72,7 +72,7 @@ const CitizenDashboard = () => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:8000/api/complaints', {
+            await axios.post('/api/complaints', {
                 title,
                 description,
                 category

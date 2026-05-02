@@ -45,7 +45,7 @@ const AdminDashboard = () => {
     const fetchComplaints = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:8000/api/complaints', {
+            const response = await axios.get('/api/complaints', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setComplaints(response.data);
@@ -61,7 +61,7 @@ const AdminDashboard = () => {
         setIsUpdating(true);
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://localhost:8000/api/complaints/${selectedComplaint.id}/status`, {
+            await axios.put(`/api/complaints/${selectedComplaint.id}/status`, {
                 status: statusUpdate,
                 remark: remark
             }, {
