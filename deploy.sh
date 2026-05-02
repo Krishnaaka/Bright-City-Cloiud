@@ -8,7 +8,7 @@
 set -e   # stop script immediately if any command fails
 
 ECR_REGISTRY="700918785571.dkr.ecr.ap-south-1.amazonaws.com"
-ECR_REPO="cloud"
+ECR_REPO="action-21"
 APP_DIR="/home/ec2-user/brightcity"
 REGION="ap-south-1"
 
@@ -23,11 +23,12 @@ echo "⏰ Step 1/7 — Syncing system clock..."
 sudo chronyc makestep 2>/dev/null || true
 echo "   ✅ Clock synced: $(date)"
 
-# ── STEP 2: Clear any old broken AWS credentials ───────────────────
+# ── STEP 2: Skip credential clearing to allow aws configure ───────
 echo ""
-echo "🔑 Step 2/7 — Clearing stale AWS credentials..."
-rm -f ~/.aws/credentials ~/.aws/config
-echo "   ✅ Using EC2 IAM Role for authentication"
+echo "🔑 Step 2/7 — Checking AWS credentials..."
+# rm -f ~/.aws/credentials ~/.aws/config  <-- REMOVED so we don't delete your manual keys
+aws sts get-caller-identity > /dev/null
+echo "   ✅ AWS credentials found and working"
 
 # ── STEP 3: Login to ECR ───────────────────────────────────────────
 echo ""
@@ -122,7 +123,7 @@ services:
       retries: 5
 
   backend:
-    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-cloud}:backend-latest
+    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-action-21}:backend-latest
     restart: always
     ports:
       - "8000:8000"
@@ -136,7 +137,7 @@ services:
       - app_network
 
   frontend:
-    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-cloud}:frontend-latest
+    image: ${ECR_REGISTRY:-700918785571.dkr.ecr.ap-south-1.amazonaws.com}/${ECR_REPO:-action-21}:frontend-latest
     restart: always
     ports:
       - "80:80"
@@ -219,7 +220,7 @@ EOF
 # Write .env file
 cat > $APP_DIR/.env << 'EOF'
 ECR_REGISTRY=700918785571.dkr.ecr.ap-south-1.amazonaws.com
-ECR_REPO=cloud
+ECR_REPO=action-21
 POSTGRES_USER=brightcity_user
 POSTGRES_PASSWORD=brightcity_password
 POSTGRES_DB=brightcity_db
