@@ -1,4 +1,4 @@
-name: CI/CD → ECR → EC2
+name: CI/CD → ECR
 
 on:
   push:
@@ -14,7 +14,7 @@ env:
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
 
-  # ── JOB 1: Build & Push Images to ECR ─────────────────────────────────────
+  # ── Build & Push Images to ECR ─────────────────────────────────────────────
   build-and-push:
     name: 🐳 Build & Push to ECR
     runs-on: ubuntu-latest
@@ -81,114 +81,10 @@ jobs:
         run: |
           echo "### 🐳 Docker Images Pushed to ECR" >> $GITHUB_STEP_SUMMARY
           echo "**Registry:** \`$ECR_REGISTRY/$ECR_REPO\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Service  | Tag |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| Backend  | \`backend-$IMAGE_TAG\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend | \`frontend-$IMAGE_TAG\` |" >> $GITHUB_STEP_SUMMARY
-
-  # ── JOB 2: Deploy to EC2 ──────────────────────────────────────────────────
-  deploy:
-    name: 🚀 Deploy to EC2
-    runs-on: ubuntu-latest
-    needs: build-and-push
-
-    steps:
-      - name: ⬇️ Checkout code (for docker-compose & monitoring files)
-        uses: actions/checkout@v4
-
-      - name: 📁 Copy compose & monitoring files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,monitoring/"
-          target: "/home/${{ secrets.EC2_USER }}/brightcity"
-
-      - name: 🚀 SSH — Pull images & restart services
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd /home/${{ secrets.EC2_USER }}/brightcity
-
-            # Write .env for docker compose
-            cat > .env <<EOF
-            AWS_ACCOUNT_ID=700918785571
-            AWS_REGION=ap-south-1
-            ECR_REGISTRY=700918785571.dkr.ecr.ap-south-1.amazonaws.com
-            ECR_REPO=action-21
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            SECRET_KEY=${{ secrets.SECRET_KEY }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            GRAFANA_USER=${{ secrets.GRAFANA_USER }}
-            GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
-            EOF
-
-            # Login to ECR
-            aws ecr get-login-password --region ap-south-1 | \
-              docker login --username AWS --password-stdin \
-              700918785571.dkr.ecr.ap-south-1.amazonaws.com
-
-            # Pull latest images
-            docker compose pull
-
-            # Start/restart all services
-            docker compose up -d --remove-orphans
-
-            # Remove dangling images to save disk space
-            docker image prune -f
-
-            echo "✅ Deployment complete!"
-
-      - name: 🩺 Health Check
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "⏳ Waiting for services to be ready..."
-            sleep 20
-
-            # Check frontend
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/)
-            if [ "$HTTP_STATUS" == "200" ]; then
-              echo "✅ Frontend is UP (HTTP $HTTP_STATUS)"
-            else
-              echo "❌ Frontend returned HTTP $HTTP_STATUS"
-              exit 1
-            fi
-
-            # Check backend API
-            API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/)
-            if [ "$API_STATUS" == "200" ]; then
-              echo "✅ Backend API is UP (HTTP $API_STATUS)"
-            else
-              echo "❌ Backend API returned HTTP $API_STATUS"
-              exit 1
-            fi
-
-            # Check Grafana
-            GRAFANA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/)
-            echo "📊 Grafana status: HTTP $GRAFANA_STATUS"
-
-            echo ""
-            echo "🟢 All services healthy!"
-
-      - name: 📋 Deployment Summary
-        if: always()
-        run: |
-          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "| Service    | URL |" >> $GITHUB_STEP_SUMMARY
-          echo "|------------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Frontend   | http://${{ secrets.EC2_HOST }}/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔌 Backend    | http://${{ secrets.EC2_HOST }}:8000/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📊 Grafana    | http://${{ secrets.EC2_HOST }}:3000/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📈 Prometheus | http://${{ secrets.EC2_HOST }}:9090/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Image Tag  | \`${{ needs.build-and-push.outputs.image-tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next:** SSH into EC2 and run \`docker compose pull && docker compose up -d\`"
